@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.tgz
 .DS_Store
+
+# Hermes ops (local/machine-specific)
+ops/hermes/bootstrap.log
+ops/hermes/__pycache__/
