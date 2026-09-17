@@ -1,0 +1,41 @@
+{
+  "name": "@jonnylab/agent-receipt",
+  "version": "0.0.1",
+  "description": "See what your coding agent actually changed — including Bash — and restore files one by one.",
+  "type": "module",
+  "bin": {
+    "agent-receipt": "dist/src/cli/main.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist/src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && vitest run",
+    "bench": "npm run build && node dist/scripts/bench-scan.js"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "coding-agent",
+    "undo",
+    "restore",
+    "audit",
+    "receipt"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
