@@ -15,6 +15,7 @@ import { ContentStore } from '../store/cas.js';
 import { claudeSettingsPath, hookCommand, readSettings, withOurHooks, withoutOurHooks, writeSettings } from '../install/claude-settings.js';
 import { dataHome, displayPath, ensurePrivateDir } from '../util/paths.js';
 import { redactString } from '../util/redaction.js';
+import { readTelemetryConfig, writeTelemetryConfig } from '../util/telemetry.js';
 
 const VERSION = '0.0.1';
 
@@ -169,6 +170,7 @@ function verify(home: string, ref: string | undefined): number {
 }
 
 async function install(flags: Set<string>, mode: 'install' | 'uninstall'): Promise<number> {
+  const home = dataHome();
   const path = claudeSettingsPath(flags.has('--project') ? 'project' : 'user', process.cwd());
   const current = readSettings(path);
   const executable = resolveExecutable();
@@ -183,15 +185,30 @@ async function install(flags: Set<string>, mode: 'install' | 'uninstall'): Promi
   console.log(`${mode === 'install' ? 'Will add' : 'Will remove'} agent-receipt hooks in ${displayPath(path)}:`);
   console.log('  SessionStart, PreToolUse (Bash/Write/Edit/MCP), PostToolUse, PostToolUseFailure, Stop, SessionEnd');
   if (mode === 'install') console.log(`  command: ${hookCommand(executable as string)}\n  Hooks only observe. They never block or change what the agent does.`);
+
+  let telemetryEnabled = false;
   if (!flags.has('--yes')) {
     if (process.stdin.isTTY !== true) return fail('Re-run with --yes to apply.');
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const answer = await rl.question('Continue? [y/N] ');
     rl.close();
     if (!/^y(es)?$/i.test(answer.trim())) return 1;
+
+    if (mode === 'install') {
+      const rl2 = createInterface({ input: process.stdin, output: process.stdout });
+      const telemetryAnswer = await rl2.question('\nSend anonymous telemetry (installed event & 3rd receipt milestone)? [y/N] ');
+      rl2.close();
+      telemetryEnabled = /^y(es)?$/i.test(telemetryAnswer.trim());
+    }
   }
+
   const backup = writeSettings(path, next);
   if (backup !== undefined) console.log(`Backup: ${displayPath(backup)}`);
+
+  if (mode === 'install') {
+    writeTelemetryConfig(home, { enabled: telemetryEnabled });
+  }
+
   console.log(mode === 'install' ? 'Done. Start a new Claude Code session, then run `agent-receipt show`.' : 'Removed.');
   return 0;
 }
