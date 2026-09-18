@@ -6,6 +6,8 @@ Claude Code's `/rewind` only tracks its own file-editing tools: "Checkpointing d
 commands." agent-receipt snapshots your project folder around every Bash/Write/Edit call, so an `rm -rf` or a `git clean`
 shows up on a receipt and can be undone — including untracked and gitignored files like `.env`.
 
+![agent-receipt demo: a Bash rm -rf deletes tracked and gitignored files, agent-receipt show reveals what happened, restore brings it all back](docs/demo.gif)
+
 ## Install
 
 ```sh
