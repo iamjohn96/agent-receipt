@@ -15,9 +15,9 @@ import { ContentStore } from '../store/cas.js';
 import { claudeSettingsPath, hookCommand, readSettings, withOurHooks, withoutOurHooks, writeSettings } from '../install/claude-settings.js';
 import { dataHome, displayPath, ensurePrivateDir } from '../util/paths.js';
 import { redactString } from '../util/redaction.js';
-import { readTelemetryConfig, writeTelemetryConfig } from '../util/telemetry.js';
+import { describeTelemetry, readTelemetryConfig, sendEvent, writeTelemetryConfig } from '../util/telemetry.js';
 
-const VERSION = '0.0.1';
+const VERSION = '0.0.3';
 
 const HELP = `agent-receipt ${VERSION} — see what your coding agent changed (including Bash) and restore files.
 
@@ -28,9 +28,11 @@ Usage:
   agent-receipt show [session|last] [--share] [--json] [--all]
   agent-receipt restore [session|last] [paths...] [--deleted] [--modified] [--include-created] [--force] [--yes]
   agent-receipt verify [session|last]         Check the session's event hash chain
+  agent-receipt telemetry [on|off]            Show or change the opt-in anonymous ping
   agent-receipt hook claude                   (internal) Claude Code hook entry point
 
-Data lives in ~/.agent-receipt (override with AGENT_RECEIPT_HOME). Nothing leaves your machine.`;
+Data lives in ~/.agent-receipt (override with AGENT_RECEIPT_HOME). Nothing leaves your machine unless you
+opted in at init — see: agent-receipt telemetry`;
 
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -49,6 +51,8 @@ async function main(argv: string[]): Promise<number> {
       return restore(home, args, flags);
     case 'verify':
       return verify(home, args[0]);
+    case 'telemetry':
+      return telemetry(home, args[0]);
     case 'init':
       return install(flags, 'install');
     case 'uninstall':
@@ -111,7 +115,7 @@ function list(home: string): number {
   return 0;
 }
 
-function show(home: string, ref: string | undefined, flags: Set<string>): number {
+async function show(home: string, ref: string | undefined, flags: Set<string>): Promise<number> {
   const session = resolveSession(home, ref);
   if (session === undefined) return fail('No matching session. See `agent-receipt list`.');
   const store = new ContentStore(home);
@@ -122,6 +126,41 @@ function show(home: string, ref: string | undefined, flags: Set<string>): number
   });
   if (flags.has('--json')) console.log(JSON.stringify(receipt, null, 2));
   else console.log(renderText(receipt, { share: flags.has('--share'), color: process.stdout.isTTY === true && !process.env.NO_COLOR, maxRows: flags.has('--all') ? 10_000 : 8 }));
+  await maybeSendMilestone(home);
+  return 0;
+}
+
+/** Receipts produced so far and how many distinct days they span — the shape PLAN §4 counts. */
+function receiptProgress(home: string): { count: number; days: number } {
+  const days = new Set<string>();
+  let count = 0;
+  for (const meta of SessionStore.list(home)) {
+    if (!existsSync(join(home, 'sessions', meta.id, 'receipt.json'))) continue;
+    count += 1;
+    days.add(meta.updatedAt.slice(0, 10));
+  }
+  return { count, days: days.size };
+}
+
+/** Fires at most once per install, and only for users who opted in. */
+async function maybeSendMilestone(home: string): Promise<void> {
+  const config = readTelemetryConfig(home);
+  if (!config.enabled || config.sent.includes('third_receipt')) return;
+  const progress = receiptProgress(home);
+  if (progress.count < 3) return;
+  await sendEvent(home, 'third_receipt', VERSION, { days: progress.days });
+}
+
+function telemetry(home: string, action: string | undefined): number {
+  if (action === 'on' || action === 'off') {
+    writeTelemetryConfig(home, { enabled: action === 'on' });
+    console.log(action === 'on'
+      ? 'Telemetry on: two anonymous events, nothing else. Run `agent-receipt telemetry` to see the exact payload.'
+      : 'Telemetry off. The anonymous id has been deleted.');
+    return 0;
+  }
+  if (action !== undefined) return fail('Usage: agent-receipt telemetry [on|off]');
+  console.log(describeTelemetry(home, VERSION));
   return 0;
 }
 
@@ -207,6 +246,7 @@ async function install(flags: Set<string>, mode: 'install' | 'uninstall'): Promi
 
   if (mode === 'install') {
     writeTelemetryConfig(home, { enabled: telemetryEnabled });
+    if (telemetryEnabled) await sendEvent(home, 'installed', VERSION);
   }
 
   console.log(mode === 'install' ? 'Done. Start a new Claude Code session, then run `agent-receipt show`.' : 'Removed.');
