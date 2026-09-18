@@ -17,20 +17,26 @@ Payload: `install_id` (uuid created on opt-in, deleted on opt-out), `event`, `ve
 milestone. Nothing else. Delivery is best-effort with a 2 s timeout, at most once per event, and a failure is silent and
 retried on a later run. `agent-receipt telemetry` prints the exact payload to the user.
 
-## Setup (once)
+## Setup
+
+Live since 2026-09-18 on Supabase project `agent-receipt-telemetry` (`cxahrpnqcgfqjeftnbqj`, ap-northeast-2). To stand
+up a replacement or a self-hosted copy:
 
 1. Create a Supabase project (free tier is enough).
-2. SQL editor → run `schema.sql` from this directory.
-3. Project Settings → API → copy the **Project URL** and the **anon public** key.
+2. SQL editor → run `schema.sql` from this directory. Read its header comments first; three of the notes there are
+   non-obvious and each one produced a silent failure before it was fixed.
+3. Project Settings → API Keys → copy the **Project URL** and the **publishable** key (`sb_publishable_…`). Never the
+   secret key — it bypasses RLS and must not ship in a client.
 4. In `src/util/telemetry.ts`, fill the two constants:
 
    ```ts
    const DEFAULT_ENDPOINT = 'https://<project-ref>.supabase.co/rest/v1/install_events';
-   const DEFAULT_KEY = '<anon public key>';
+   const DEFAULT_KEY = 'sb_publishable_…';
    ```
 
-   Both are public values — the anon key is designed to ship in clients, and RLS is what protects the data. An empty
-   endpoint makes telemetry a no-op even for users who opted in, which is the safe default for any unpublished build.
+   Both are public values — Supabase documents the publishable key as safe to ship, and RLS is what protects the data.
+   An empty endpoint makes telemetry a no-op even for users who opted in, which is the safe default for any build that
+   has not been pointed at a collector.
 5. `npm run build && npm test`, then publish.
 
 Verify end to end before publishing:
@@ -65,9 +71,9 @@ service role.
 - **Opt-in rate is the real ceiling.** The prompt defaults to N. If 20 % of installers say yes, 25 confirmed installs
   means roughly 125 real ones. Whatever threshold the decision uses has to be set against the instrument, not against
   imagined demand — see the note in PROJECT_STATE.md.
-- **Anyone can POST junk.** The anon key is public, so the table is writable by anyone who reads the source. The unique
-  constraint and the CHECK constraints bound the damage to one row per fabricated uuid per event. At the scale this
-  experiment operates on, a few dozen fake rows would corrupt the verdict, so sanity-check the `created_at` clustering
-  before trusting a sudden jump.
+- **Anyone can POST junk.** The publishable key is public, so the table is writable by anyone who reads the source. The
+  unique and CHECK constraints bound the damage to one row per fabricated uuid per event. At the scale this experiment
+  operates on, a few dozen fake rows would corrupt the verdict, so sanity-check the `created_at` clustering before
+  trusting a sudden jump.
 - **This measures consent, not usage.** A user who installs, uses the tool daily, and declines telemetry is invisible
   here and counts only if they say something in an issue or a thread.

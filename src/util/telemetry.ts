@@ -9,8 +9,8 @@ import { ensurePrivateDir } from './paths.js';
  * collector. Both values are overridable so the collector can be self-hosted or faked
  * in tests; neither is a secret (the key is a public insert-only anon key).
  */
-const DEFAULT_ENDPOINT = '';
-const DEFAULT_KEY = '';
+const DEFAULT_ENDPOINT = 'https://cxahrpnqcgfqjeftnbqj.supabase.co/rest/v1/install_events';
+const DEFAULT_KEY = 'sb_publishable_rVAcFEMLnU0wuVGVUrtiPg_QIXb8znq';
 
 export const TELEMETRY_EVENTS = ['installed', 'third_receipt'] as const;
 export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];
@@ -109,9 +109,12 @@ export async function sendEvent(
 
     const installId = ensureInstallId(dataHome, config);
     const payload = buildPayload(installId, event, version, options.days);
+    // No `resolution=ignore-duplicates`: that turns the insert into an upsert, which RLS
+    // then requires an UPDATE policy for — and granting UPDATE would let anyone rewrite
+    // rows. A duplicate instead comes back as 409, which we treat as already delivered.
     const headers: Record<string, string> = {
       'content-type': 'application/json',
-      prefer: 'return=minimal,resolution=ignore-duplicates',
+      prefer: 'return=minimal',
     };
     if (key !== '') {
       headers.apikey = key;

@@ -38,6 +38,10 @@ describe('telemetry consent', () => {
   it('sends nothing when opted in but no collector is configured', async () => {
     const home = tempDir('tele');
     writeTelemetryConfig(home, { enabled: true });
+    // An explicitly empty endpoint is the "unpublished build" state, and must stay silent
+    // even for a user who said yes.
+    process.env.AGENT_RECEIPT_TELEMETRY_URL = '';
+    process.env.AGENT_RECEIPT_TELEMETRY_KEY = '';
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -71,6 +75,10 @@ describe('telemetry payload', () => {
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(URL);
+    // resolution=ignore-duplicates would make PostgREST upsert, which RLS rejects
+    // without an UPDATE policy. Regression guard for the 09-18 401.
+    const prefer = String((init.headers as Record<string, string>).prefer ?? '');
+    expect(prefer).not.toContain('resolution');
     const body = JSON.parse(String(init.body)) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual(['days', 'event', 'install_id', 'platform', 'version']);
     expect(body.event).toBe('third_receipt');
