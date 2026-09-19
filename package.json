@@ -1,7 +1,7 @@
 {
   "name": "@jonnylab/agent-receipt",
-  "version": "0.0.3",
-  "description": "See what your coding agent actually changed \u2014 including Bash \u2014 and restore files one by one.",
+  "version": "0.0.4",
+  "description": "See what your coding agent actually changed — including Bash — and restore files one by one.",
   "type": "module",
   "bin": {
     "agent-receipt": "dist/src/cli/main.js"

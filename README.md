@@ -3,8 +3,10 @@
 See what your coding agent actually changed — **including files touched by Bash** — and restore them one file at a time.
 
 Claude Code's `/rewind` only tracks its own file-editing tools: "Checkpointing does not track files modified by Bash
-commands." agent-receipt snapshots your project folder around every Bash/Write/Edit call, so an `rm -rf` or a `git clean`
-shows up on a receipt and can be undone — including untracked and gitignored files like `.env`.
+commands." A newer setting (`bashEditDiffEnabled`) will show a diff when a Bash call edits a file, similar to what
+Edit/Write already show — but that's a diff on a modification, not a record of what was deleted, and not something
+you can restore from. agent-receipt snapshots your project folder around every Bash/Write/Edit call, so an `rm -rf`
+or a `git clean` shows up on a receipt and can be undone — including untracked and gitignored files like `.env`.
 
 ![agent-receipt demo: a Bash rm -rf deletes tracked and gitignored files, agent-receipt show reveals what happened, restore brings it all back](docs/demo.gif)
 
@@ -58,40 +60,29 @@ Restoring is itself reversible — the previous contents are saved before anythi
 | `show [session\|last]` | Build and print the receipt (`--share` masks paths and secrets, `--json`, `--all`) |
 | `restore [session\|last] [paths...]` | Restore files (`--deleted`, `--modified`, `--include-created`, `--force`, `--yes`) |
 | `verify [session\|last]` | Check the session's event hash chain |
-| `telemetry [on\|off]` | Show or change the opt-in anonymous ping |
 
 ## Privacy
 
-Everything stays on your machine. Receipts, snapshots, and the event ledger live in `~/.agent-receipt` (0700, override
-with `AGENT_RECEIPT_HOME`). Snapshots can contain secrets — that is the point, it is how `.env` comes back — so the
-directory is private and content is pruned on a retention window. `--share` masks paths and secret-looking values before
-you post a receipt anywhere.
-
-Telemetry is **off unless you opt in** at `init`, and it is two events for the entire life of the install: `installed`,
-and `third_receipt` the first time you have produced three receipts. Run `agent-receipt telemetry` to see the exact
-payload. It is only ever this:
-
-```json
-{
-  "install_id": "a random uuid, created on opt-in and deleted when you opt out",
-  "event": "third_receipt",
-  "version": "0.0.3",
-  "platform": "darwin",
-  "days": 2
-}
-```
-
-No file names, no paths, no commands, no project or machine names, no content. `agent-receipt telemetry off` deletes the
-id and stops everything. If you never opt in, no id is ever created.
+Everything stays on your machine, always — there is no telemetry, no network call of any kind, nothing to opt in or
+out of. Receipts, snapshots, and the event ledger live in `~/.agent-receipt` (0700, override with
+`AGENT_RECEIPT_HOME`). Snapshots can contain secrets — that is the point, it is how `.env` comes back — so the
+directory is private and content is pruned on a retention window. `--share` masks paths and secret-looking values
+before you post a receipt anywhere.
 
 ## What it does not see
 
-Changes outside the project folder, network effects, content of files over 5 MB, `.git` and `node_modules`. Sessions that
-started before `init` are not recorded, and costs are estimates at list price.
+Changes outside the project folder, content of files over 5 MB, `.git` and `node_modules`. It watches the Bash/Write/Edit
+tool calls Claude Code hands it — a child process a Bash command spawns that makes its own file changes outside that
+call's own lifecycle is not fully observed, since nothing hooks into the child directly. Sessions that started before
+`init` are not recorded, and costs are estimates at list price.
+
+This is an observation tool, not a guardrail: it does not block or warn before a destructive command runs, only
+records what happened so it can be undone.
 
 ## Status
 
-Pre-release (v0, Claude Code only). Codex and Cursor adapters are not built yet.
+Pre-release, Claude Code only, maintained best-effort — no roadmap or support commitment beyond what's here today.
+Codex and Cursor adapters are not built.
 
 Issues and feedback: https://github.com/iamjohn96/agent-receipt/issues
 
