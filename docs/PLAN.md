@@ -1,4 +1,8 @@
-# Agent Receipt — 2주 검증 실행 계획 (v1, 2026-09-17)
+> **SUPERSEDED 2026-09-19.** The GO/PIVOT/KILL validation track below (§1-7) is retired. Business viability was re-scored 4/10 and Agent Receipt was pulled from JonnyLab's product candidate list. See `../PROJECT_STATE.md` -> "STRATEGIC RESET" for the actual current plan: a lean, telemetry-free open-source rebuild shipped under a hard 2-day cap, published once, then stopped -- no revenue expectation, no roadmap. Left below only as historical record.
+
+---
+
+# Agent Receipt — 2주 검증 실행 계획 (v1, 2026-09-17) [RETIRED]
 
 **검증할 가설:** 코딩 에이전트를 쓰는 개발자에게 "에이전트가 Bash로 뭘 지우고 바꿨는지 보고 되돌리는 것"은 **낯선 사람의 CLI를 설치하게 만들 만큼** 큰 고통이다.
 **이 테스트가 판정하지 않는 것:** 수익화 가능성, 장기 리텐션. 오직 "행동을 끌어내는가".

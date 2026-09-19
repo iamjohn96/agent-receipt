@@ -7,12 +7,12 @@ restores files one by one. Plan and GO/PIVOT/KILL criteria: `docs/PLAN.md`. Reus
 
 ## Hard rules
 - Hooks never print to stdout, never exit non-zero, never block or alter the agent.
-- Nothing leaves the machine. Telemetry, if added, is opt-in, default off, and carries no paths, content or commands.
+- Nothing leaves the machine. No telemetry, no network calls, ever (removed entirely 09-19, was opt-in as of 0.0.3).
 - Hook-supplied identifiers never become path segments without `safeSegment`.
 - Restore never overwrites a file whose current content differs from the recorded post-image without `--force`,
   and always backs up current content first.
 - Receipts state what is not observed (`coverage.notObserved`). Never claim causal attribution.
-- v0 anti-scope: policy/blocking, approvals, live dashboard, SQLite, signing, cloud, anything from APG `src/stage/**`.
+- v0 anti-scope: policy/blocking, pre-approval prompts, live dashboard (CLI output takes priority), SQLite, signing/attestation, cloud sync, telemetry, simultaneous multi-agent support, Codex/Cursor support, enterprise/team features, auto-update, anything from APG `src/stage/**`.
 
 ## Allowed without approval
 Read/search this repo, edit src/test/docs, build, test, bench.

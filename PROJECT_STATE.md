@@ -1,77 +1,86 @@
 # Current State
 
-Updated 2026-09-17. Validation timebox 09-17 → 09-30, decision 10-01 (see docs/PLAN.md §1, §5 — do not loosen).
+## STRATEGIC RESET — 2026-09-19
 
-## Current Milestone
-M1 — Claude Code v0 usable end-to-end locally (release target 09-22).
+Business viability re-scored **4/10**, removed from JonnyLab's product candidate list: the category leader (claude-receipts, 624★) is free (zero monetization basis), Anthropic's `bashEditDiffEnabled` + Claude Code's checkpoint/rewind system already cover or can incrementally absorb most of the value, and "many free users → few paid" has failed four times before. Everything in this file below this section (the ≥25/≥15/≥3 validation-track metrics, the 10-01 GO/PIVOT/KILL decision, `docs/PLAN.md` §1–7) is **retired**. Kept only as history.
 
-## Completed
-- D0 competitor check (docs/PLAN.md §6): Entire CLI excludes gitignored files, has no Bash attribution, removed restore;
-  npm `agent-receipt` logs commands only. Early-KILL gate passed.
-- Core pipeline: CAS store, incremental scan/diff, JSONL hash-chain ledger with cross-process lock,
-  Claude hook adapter (SessionStart/PreToolUse/PostToolUse/PostToolUseFailure/Stop/SessionEnd),
-  attribution (tool / shared for parallel calls / unattributed between calls), outside-root detection,
-  command risk scoring, cost estimate from transcript (prices checked 2026-09-17), receipt JSON + text render
-  with `--share` masking, restore (dry-run, conflict detection, backup, index refresh), installer merge/uninstall.
-- Tests: 16 passing (`npm test`), including CLI stdin end-to-end and garbage-input hook safety.
+**New goal: zero revenue expectation. The entire point is leaving one published open-source artifact.** Justified by how much is already reusable — realistic in 2 days; not worth doing past that.
 
-## Bench (Linux VM on the dev Mac, not APFS — re-run on macOS)
-| files | cold scan | warm scan | Pre/Post hook process (median) |
+**Absolute rules (non-negotiable, do not propose loosening any of these):**
+1. **Hard 2-day work-time cap.** Whatever works at the cap point ships; nothing extends.
+2. **Zero monetization work of any kind** — no payment, licensing, paid tiers, waitlist, landing page, funnel, email capture.
+3. **No scope expansion.** Anything not on the build list below goes in the README's "what we don't do" section, never into code.
+
+**Build list (complete, nothing more):** Claude Code hooks that snapshot target files before destructive Bash calls; a session-end receipt (created/modified/deleted incl. via Bash, commands run, outside-working-folder access, risk flags); file-level restore (**the core value — the receipt is secondary**); a README.
+
+**Explicit exclusions (do not build):** pre-approval prompts, signing/attestation (Ed25519/VC-style), cloud sync, simultaneous multi-agent support, Codex/Cursor support, enterprise features, team sharing, telemetry, auto-update.
+
+**Decisions confirmed 09-19:**
+- Hermes cron (`agent-receipt-watch`) keeps running on its existing schedule until this rebuild is publicly shipped, then gets stopped. Existing npm package + GitHub repo stay public/unarchived as-is.
+- This is an in-place simplification of the existing repo (`iamjohn96/agent-receipt`) and existing npm package (`@jonnylab/agent-receipt`) — not a fresh start.
+- The v0.0.3 opt-in Supabase telemetry is removed entirely, not made more private/opt-out.
+- APG's (`agent-permission-guard`) named audit/risk files were **not** imported — agent-receipt's own existing equivalents (~516 lines, already tested) already cover the same build-list items; importing the heavier APG versions (~2440 lines) would have been scope expansion for no functional gain. Confirmed with Jonny 09-19.
+
+**Retired as of this reset:** the ≥15-reply / ≥3-community-post "exposure commitment" and the 10-01 GO/PIVOT/KILL decision — those measured business-validation signal, which no longer applies. The historical reply log below is kept for reference; Hermes-sourced GitHub/gist replies may continue under the existing human-approved workflow only until this rebuild ships, not toward any revived quota.
+
+**Release procedure (day 2):** public GitHub repo (already public) → `npm publish` (Jonny runs it himself) → share exactly once, lightly, in one or two relevant communities, disclosing authorship — no marketing campaign.
+
+**After it ships: stop.** No feature additions, no expanded issue-response work, no follow-up roadmap. One pre-decided reconsideration trigger, fixed in advance so it can't be rationalized later: within 30 days, either GitHub reaches **≥200 stars** or an **unsolicited paid inquiry** arrives. Neither → no reconsideration, and this number does not get loosened later.
+
+### Rebuild status — SHIPPED 09-19
+
+- **Telemetry removal: done.** Removed `src/util/telemetry.ts`, `test/telemetry.test.ts`, `ops/telemetry/` (Supabase schema + docs); stripped the `telemetry` CLI subcommand and install-time opt-in prompt from `src/cli/main.ts`; rewrote the README's privacy section, added the honest `bashEditDiffEnabled`/`/rewind` comparison and child-process observation limit, added a best-effort-maintenance line, confirmed "tamper-proof" appears nowhere. Version `0.0.3` → `0.0.4`. Verified in an isolated fresh install: typecheck clean, 16/16 tests pass.
+- **Committed** `13eccbc`, **pushed** to `origin/main` (confirmed `main`/`origin/main` in sync, 09-19).
+- **Published to npm**: `@jonnylab/agent-receipt@0.0.4` (`npm publish` run by Jonny, 09-19).
+- **Exclusion-list audit:** grepped `src/` + README for every explicit-exclusion term — clean.
+- **Build-list coverage:** hooks/snapshot, session-end receipt (incl. risk flags, outside-folder access), file-level restore, README — all present and tested.
+- **AGENTS.md synced 09-19**: the old "telemetry if added, opt-in" line and the shorter anti-scope list were stale against this reset — both corrected.
+- Remaining: Jonny's single "가볍게 한 번" community share, then per the rule above — stop. Watch only the 30-day/200-star/paid-inquiry trigger.
+
+---
+
+Everything below this line predates the 2026-09-19 reset and reflects the retired validation-track plan. Kept as history / for the reply log and Hermes operational notes, not as active goals.
+
+Updated 2026-09-19 (05:2x UTC / 14:2x KST). Validation timebox 09-17 → 09-30, decision 10-01 (see docs/PLAN.md §1, §5).
+
+**Pipeline split, final (09-19):** GitHub/gist outreach for Agent Receipt lives entirely in the Cowork "MacOS" session (built-in browser, Jonny live/approving). The "X 계정 운영" chat owns **X/Bluesky/Threads only**. Hermes/Telegram still feeds candidate leads in; drafts get rewritten before posting, never copy-pasted.
+
+## Hermes classifier tightened 09-19 — landed and confirmed live
+
+`ops/hermes/cron_prompt.md` rewritten to fix false positives: excludes tool-internal/config/credential-file bugs, permission/sandbox bugs with no actual deletion, thin one-line reports; forbids reusing a fixed closing sentence; requires a scope/honesty check before any tool pitch (home-root/drive-root wipes, >5MB media get an honest non-fit disclosure, since `AGENT_RECEIPT_HOME` lives under `~/.agent-receipt`). Committed `d27b8aa`. Live cron re-deployed via `hermes cron remove` + `bootstrap.sh` (this file is baked in as a literal string at job-creation time, not live-reloaded).
+
+## Reconciled reply count as of 09-19: 9 posted (retired quota — see reset above)
+
+| # | Issue | Posted via | Status |
 |---|---|---|---|
-| 10k | 404 ms | 17 ms | 72 ms |
-| 50k | 1972 ms | 83 ms | 229 ms |
-SessionStart baseline on 50k files took ~4 s.
+| 1 | `anthropics/claude-code#70727` | Cowork session, 09-18 | ✅ live |
+| 2 | `anthropics/claude-code#94453` | Cowork session, 09-18 | ✅ live |
+| 3 | gist `yurukusa/...#gistcomment-6376953` | Cowork session, 09-18 | ✅ live |
+| 4 | `r/ClaudeAI` comment `paizxbh` | Cowork session, 09-18 | ✅ posted |
+| 5 | `openai/codex#46186` | Other session (Hermes/Telegram), 09-18 | ✅ posted |
+| 6 | `anthropics/claude-code#95245` | Other session (Hermes/Telegram), 09-18 | ✅ posted |
+| 7 | `anthropics/claude-code#87360` | Cowork session, 09-19 | ✅ posted |
+| 8 | `anthropics/claude-code#95414` | Cowork session, 09-19 | ✅ posted |
+| 9 | `anthropics/claude-code#75861` | Cowork session, 09-19 | ✅ posted |
 
-## Remaining (M1)
-1. ~~Dogfood~~ — done against the real installer output (see "Dogfood run" below); organic real-agent session
-   still needs the user's own Terminal (not blocking).
-2. Share card: single-file HTML receipt (`agent-receipt card`) — primary content unit, must pass the "shareable without explanation" filter.
-3. CAS retention cleanup (default 7 days) — stored copies include `.env` files.
-4. Opt-in anonymous ping (installed / 3rd receipt) per docs/PLAN.md §4.
-5. README with 60-second demo, LICENSE file, npm name `@jonnylab/agent-receipt`.
-6. Per-root baseline cache so a new session in the same repo does not re-hash everything.
+## Monitoring (docs/PLAN.md §3) — active until shipped, now due to stop
+
+Hermes = Nous Research Hermes Agent. Files: `ops/hermes/`. Cron `agent-receipt-watch` on schedule (`0 9,13,18,22 * * *` KST). Per the 09-19 reset decision: the rebuild has now shipped (pushed + published), so this cron should be stopped next (`hermes cron remove agent-receipt-watch`, from Jonny's own Terminal).
 
 ## Important Decisions
-- JSONL + file CAS instead of SQLite (no native deps, Node >= 20) — install friction matters more than query power.
-- Pre-scan on mutating tools only; PostToolUse `*` so outside-root reads are visible.
-- Hook command is `"<node>" "<abs main.js>" hook claude --by=jonnylab-agent-receipt`; the marker scopes uninstall.
+- JSONL + file CAS instead of SQLite.
+- ~~Opt-in telemetry~~ — removed entirely 09-19.
+- Hooks are pure observers.
+- Global install required.
+- License: Apache-2.0.
+- `git push` / `npm publish` run by Jonny in his own Terminal — the device bridge has no GitHub credentials.
+- Editing `ops/hermes/cron_prompt.md` does not update the live cron job — needs `hermes cron remove` + re-run `bootstrap.sh`, from Jonny's own Mac Terminal.
+- All outward posts require Jonny live/approving — no autonomous posting.
+- **2026-09-19 reset:** hard 2-day cap, zero monetization work, no scope expansion beyond the build list. Do not propose loosening the cap or the 30-day/200-star/paid-inquiry reconsideration trigger.
 
-## Known Issues
-- `appendLedger` re-reads the whole file per append (fine for hundreds of events).
-- Changes outside the project root are never observed; only mentioned paths are reported.
-- A session first seen at PostToolUse (hooks installed mid-session) cannot see that call's changes (`lateStart`).
-
-## Do Not Change
-Hook stdout silence and exit-0 behavior; restore conflict checks; `safeSegment` on hook ids.
-
-## Dogfood run (2026-09-17)
-Ran the installed pipeline end-to-end for real, not just via vitest: `init --project --yes` in a throwaway
-project, extracted the exact hook `command` string from the generated `.claude/settings.json`, and replayed
-schema-accurate Claude Code hook JSON through it via `bash -c "$HOOK_CMD"` (SessionStart → PreToolUse/PostToolUse
-Bash `rm -rf notes .env` → PreToolUse/PostToolUse Write `generated.ts` → Stop → SessionEnd), then used the real
-CLI for `show`, `restore last --deleted --yes`, `verify`, `uninstall --project --yes`.
-
-Result: correct end to end. `.env` and `notes/todo.md` recorded as deleted+restorable, risk band `high`
-(`recursive_delete`, `secret_file`), `generated.ts` recorded as created, hash chain verified after the restore
-event was appended, restored files came back byte-for-byte (secret value included — confirms redaction is
-display-only, never touches stored/restored bytes), `uninstall` backed up settings.json and left `{}`.
-
-**Two things this did NOT test, and can't from here:**
-1. **An organically agent-driven session.** The `claude` CLI itself reports "claude is not enabled in this
-   environment" inside this device shell, so the hook JSON above was replayed manually (schema-accurate, from
-   the real installed command), not produced by an actual agent deciding to run `rm -rf`. Closing this gap needs
-   the user to run real Claude Code (their own Terminal/app) against a project with `agent-receipt init --project`.
-2. **True macOS-native perf.** This device shell is itself a Linux VM (`uname -a` → Linux aarch64), not native
-   macOS — the mounted folder is a bind-mount passthrough into the real Mac disk, but Node/npm here still run as
-   Linux binaries. Confirmed the bind-mount has real per-file overhead unrelated to production perf: writing
-   ~60k small files through `$HOME/mnt/MacOS/...` stalled past 180s (vs. 404ms/1972ms for 10k/50k files in the
-   VM's own /tmp — see prior bench table), deleting the same ~52.5k files took ~24s. This is Cowork-bridge
-   overhead, not how the hook process behaves when it runs natively on the user's Mac. The 09-16 bench table
-   (VM-local /tmp) remains the best number on file; a true native-Mac reading still needs `npm run bench` run
-   directly in the user's own Terminal.
-
-## Next Recommended Task
-Build the share card (`agent-receipt card` → single-file HTML, `docs/PLAN.md` §2 item 2 — the primary
-shareable content unit). The pipeline is now verified against the real installer output; the remaining gap
-(organic real-agent session) is something only the user's own Terminal can close and doesn't block this.
-Record results (hook latency, missing/extra events, errors.log) here.
+## Known Issues & Limits
+- Changes outside project root not restored. Costs are estimates.
+- `gh` CLI not installed in the cloud container.
+- The device bridge's shell (Cowork) is a separate Linux VM, not Jonny's real macOS — no `hermes`/`launchd`, no GitHub credentials for push.
+- Running `npm install`/`npm test` against a connected folder's existing `node_modules` from the device bridge can fail with native-binary mismatches (macOS vs Linux) — stage source only and do a fresh install in an isolated location instead.
+- `.ar-testsrc.tgz` in repo root is gitignored test scratch, harmless.
