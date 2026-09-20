@@ -10,6 +10,12 @@ or a `git clean` shows up on a receipt and can be undone — including untracked
 
 ![agent-receipt demo: a Bash rm -rf deletes tracked and gitignored files, agent-receipt show reveals what happened, restore brings it all back](docs/demo.gif)
 
+**Try it without installing:** `npx @jonnylab/agent-receipt show` runs the read-only commands (`show`, `list`, `verify`) with
+no install. Only `init` (which wires the hooks) needs a real install — see why below.
+
+Questions, ideas, or just want to say what's missing: [GitHub Discussions](https://github.com/iamjohn96/agent-receipt/discussions).
+Bugs: [Issues](https://github.com/iamjohn96/agent-receipt/issues).
+
 ## Install
 
 ```sh
