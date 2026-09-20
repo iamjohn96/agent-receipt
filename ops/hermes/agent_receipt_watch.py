@@ -28,6 +28,9 @@ import urllib.request
 UA = "agent-receipt-watch/0.1 (+https://www.npmjs.com/package/@jonnylab/agent-receipt)"
 STATE_PATH = os.path.expanduser("~/.hermes/scripts/.agent_receipt_seen.json")
 PENDING_PATH = os.path.expanduser("~/.hermes/scripts/.agent_receipt_pending.json")
+METRICS_PATH = os.path.expanduser("~/.hermes/scripts/.agent_receipt_metrics.jsonl")
+GH_REPO = "iamjohn96/agent-receipt"
+NPM_PKG = "@jonnylab/agent-receipt"
 JOBS_PATH = os.path.expanduser("~/.hermes/cron/jobs.json")
 SCRIPT_NAME = "agent_receipt_watch.py"
 STATE_MAX = 3000
@@ -134,6 +137,53 @@ def reddit(since_ts, errors):
                 "match": "reddit search",
             })
     return out
+
+
+def fetch_metrics(errors):
+    """GitHub stars/forks/open-issues + npm downloads (last day). None fields on fetch failure."""
+    out = {"stars": None, "forks": None, "open_issues": None, "npm_downloads_1d": None}
+    try:
+        repo = fetch_json(f"https://api.github.com/repos/{GH_REPO}")
+        out["stars"] = repo.get("stargazers_count")
+        out["forks"] = repo.get("forks_count")
+        out["open_issues"] = repo.get("open_issues_count")
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"metrics github: {e}")
+    try:
+        pkg = urllib.parse.quote(NPM_PKG, safe="")
+        dl = fetch_json(f"https://api.npmjs.org/downloads/point/last-day/{pkg}")
+        out["npm_downloads_1d"] = dl.get("downloads")
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"metrics npm: {e}")
+    return out
+
+
+def maybe_metrics_line(errors):
+    """Append one metrics row per UTC calendar day and return a report line for that day, or None if already logged today."""
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    last_date = None
+    if os.path.exists(METRICS_PATH):
+        try:
+            with open(METRICS_PATH) as f:
+                lines = [l for l in f if l.strip()]
+            if lines:
+                last_date = json.loads(lines[-1]).get("date")
+        except Exception:  # noqa: BLE001
+            pass
+    if last_date == today:
+        return None
+    m = fetch_metrics(errors)
+    row = {"date": today, **m}
+    try:
+        os.makedirs(os.path.dirname(METRICS_PATH), exist_ok=True)
+        with open(METRICS_PATH, "a") as f:
+            f.write(json.dumps(row) + "\n")
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"metrics write: {e}")
+    return (
+        f"METRICS {today}: stars={m['stars']} forks={m['forks']} "
+        f"open_issues={m['open_issues']} npm_downloads_1d={m['npm_downloads_1d']}"
+    )
 
 
 def strip_html(s):
@@ -254,8 +304,16 @@ def main():
         for e in errors:
             print(f"  error: {e}")
 
-    if not new:
+    metrics_line = None if dry else maybe_metrics_line(errors)
+
+    if not new and not metrics_line:
         return  # empty stdout -> silent Hermes tick
+
+    if metrics_line:
+        print(metrics_line)
+
+    if not new:
+        return
 
     print(f"NEW_CANDIDATES={len(new)}")
     for i, it in enumerate(new, 1):
